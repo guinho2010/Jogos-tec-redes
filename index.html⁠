@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firewall Logic - Jogo de Redes</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .game-card {
+            background-color: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            border: 2px solid #334155;
+        }
+        h1 { color: #38bdf8; font-size: 24px; margin-bottom: 5px; }
+        .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 20px; }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            background: #0f172a;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .packet-box {
+            background: #334155;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .packet-box p { margin: 5px 0; font-size: 15px; }
+        .rule {
+            font-size: 18px;
+            background: #0f2830;
+            border-left: 4px solid #38bdf8;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-liberar { background-color: #22c55e; color: white; }
+        .btn-liberar:hover { background-color: #16a34a; }
+        .btn-bloquear { background-color: #ef4444; color: white; }
+        .btn-bloquear:hover { background-color: #dc2626; }
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-card">
+        <h1>🔒 Firewall Logic</h1>
+        <p class="subtitle">1º Ano Técnico em Redes</p>
+        
+        <div class="stats">
+            <span id="score">Pontos: 0</span>
+            <span id="level">Fase: 1/4</span>
+        </div>
+
+        <div class="packet-box" id="packet-info">
+            <!-- Os dados do pacote entram aqui -->
+        </div>
+
+        <div class="rule" id="rule-text">
+            <!-- A regra lógica entra aqui -->
+        </div>
+
+        <div class="buttons">
+            <button class="btn-liberar" onclick="verificarResposta(true)">🟢 LIBERAR (V)</button>
+            <button class="btn-bloquear" onclick="verificarResposta(false)">🔴 BLOQUEAR (F)</button>
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const fases = [
+            {
+                p: true, q: false,
+                descP: "Usuário Autenticado", descQ: "IP na Lista Branca",
+                expressao: "Acesso = P ∨ Q (OU)",
+                resposta: true, // V ou F -> V
+                explicação: "Como P é Verdadeiro, o operador OU resulta em Verdadeiro (Liberado)."
+            },
+            {
+                p: true, q: false,
+                descP: "Certificado SSL Válido", descQ: "Porta 80 Aberta",
+                expressao: "Seguro = P ∧ Q (E)",
+                resposta: false, // V e F -> F
+                explicação: "No operador E, os dois precisam ser Verdadeiros. Como Q é Falso, o pacote é bloqueado."
+            },
+            {
+                p: false, q: true,
+                descP: "Detectado Malware", descQ: "Conexão Segura",
+                expressao: "Alerta = ¬P ∧ Q (NÃO P e Q)",
+                resposta: true, // NÃO F (V) e V -> V
+                explicação: "NÃO P inverte Falso para Verdadeiro. Verdadeiro E Verdadeiro = Verdadeiro."
+            },
+            {
+                p: true, q: true,
+                descP: "Firewall Ativo", descQ: "Modo Manutenção",
+                expressao: "Erro = P ⊕ Q (OU Exclusivo)",
+                resposta: false, // V xor V -> F
+                explicação: "No OU Exclusivo (XOR), se ambos forem iguais, o resultado é Falso."
+            }
+        ];
+
+        let faseAtual = 0;
+        let pontos = 0;
+
+        function carregarFase() {
+            if (faseAtual >= fases.length) {
+                document.querySelector('.game-card').innerHTML = `
+                    <h1>🎉 Parabéns, Admin!</h1>
+                    <p>Você concluiu todos os desafios de lógica e redes com sucesso!</p>
+                    <p><strong>Pontuação Final: ${pontos}</strong></p>
+                    <button onclick="location.reload()" style="background:#38bdf8; color:#0f172a; margin-top:20px;">Jogar Novamente</button>
+                `;
+                return;
+            }
+
+            const f = fases[faseAtual];
+            document.getElementById('level').innerText = `Fase: ${faseAtual + 1}/${fases.length}`;
+            document.getElementById('score').innerText = `Pontos: ${pontos}`;
+            document.getElementById('message').innerText = "";
+            
+            document.getElementById('packet-info').innerHTML = `
+                <p>📦 <strong>Pacote de Dados:</strong></p>
+                <p>• P (${f.descP}): <strong>${f.p ? 'Verdadeiro (V)' : 'Falso (F)'}</strong></p>
+                <p>• Q (${f.descQ}): <strong>${f.q ? 'Verdadeiro (V)' : 'Falso (F)'}</strong></p>
+            `;
+
+            document.getElementById('rule-text').innerHTML = `Regra: <strong>${f.expressao}</strong>`;
+        }
+
+        function verificarResposta(escolhaDoUsuario) {
+            const f = fases[faseAtual];
+            const msg = document.getElementById('message');
+
+            if (escolhaDoUsuario === f.resposta) {
+                msg.style.color = "#4ade80";
+                msg.innerHTML = "✅ Correto! " + f.explicação;
+                pontos += 10;
+                faseAtual++;
+                setTimeout(carregarFase, 2500);
+            } else {
+                msg.style.color = "#f87171";
+                msg.innerHTML = "❌ Errado! " + f.explicação;
+            }
+        }
+
+        carregarFase();
+    </script>
+</body>
+</html>
